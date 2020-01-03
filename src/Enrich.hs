@@ -2,6 +2,7 @@
 
 module Enrich where
 
+import Control.Applicative ((<|>), empty)
 import Data.Functor (void)
 import Data.Either (lefts)
 import qualified Data.HashMap.Strict as HMS
@@ -128,21 +129,21 @@ getPartitionsFromWhere (SelectWhere _ expr) = getPartitionsFromExpr expr
 getPartitionsFromExpr :: Expr ResolvedNames () -> [Partition]
 getPartitionsFromExpr (BinOpExpr _ (Operator ">") left right) =
   case [getPartitionExpr left, getPartitionExpr right] of
-    [PartitionValue valExpr, PartitionVar var varExpr] ->
-      [Partition var (evalExpr valExpr)]
-    [PartitionVar var varExpr, PartitionValue valExpr] ->
-      [Partition var (evalExpr valExpr)]
+    [Nothing, Just fqcn] ->
+      [Partition fqcn (evalExpr left)]
+    [Just fqcn, Nothing] ->
+      [Partition fqcn (evalExpr right)]
 
 unionPartitions :: [Partition] -> [Partition] -> [Partition]
 unionPartitions a b = a
 
-data PartitionExpr = PartitionValue (Expr ResolvedNames ())
-                   | PartitionVar FQCN (Expr ResolvedNames ())
-
-getPartitionExpr :: Expr ResolvedNames () -> PartitionExpr
+getPartitionExpr :: Expr ResolvedNames () -> Maybe FQCN
 getPartitionExpr expr = case expr of
-  (ColumnExpr _ (RColumnRef fqcn)) -> PartitionVar (fqcnToFQCN fqcn) expr
-  _ -> PartitionValue expr
+  (ColumnExpr _ (RColumnRef fqcn)) -> Just $ fqcnToFQCN fqcn
+  (FunctionExpr _ funcName _ args _ _ _) ->
+    -- For some reason I couldn't get asum to compile here
+    foldr (<|>) empty $ fmap getPartitionExpr args
+  _ -> Nothing
 
 evalExpr :: Expr ResolvedNames () -> Day
 evalExpr (ConstantExpr _ (StringConstant _ const)) =
