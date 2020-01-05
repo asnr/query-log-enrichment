@@ -9,7 +9,8 @@ import qualified Data.HashMap.Strict as HMS
 import Data.Proxy
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import qualified Data.Text.Lazy as TL
-import Data.Time.Calendar (Day)
+import Data.Time (NominalDiffTime, UTCTime(..), diffUTCTime)
+import Data.Time.Calendar (Day, fromGregorian)
 import Data.Time.Format (defaultTimeLocale, parseTimeOrError)
 import Database.Sql.Util.Scope (runResolverWarn)
 import Database.Sql.Type (Query(..), Statement(..))
@@ -41,11 +42,12 @@ import Database.Sql.Vertica.Type (VerticaStatement (..),
                                   Vertica)
 
 enrich :: IO ()
-enrich = putStr . show  $ extractPartitions
+enrich = putStr . show  $ extractPartitions queryTime
   "select _time from foo where _time > '2019-12-10'"
+  where queryTime = UTCTime (fromGregorian 2019 12 30) 0
 
-extractPartitions :: TL.Text -> [Partition]
-extractPartitions = getQueriedPartitions . fst . parseAndResolve
+extractPartitions :: UTCTime -> TL.Text -> [Partition]
+extractPartitions queryTime = getQueriedPartitions queryTime . fst . parseAndResolve
 
 parseAndResolve :: TL.Text -> (VerticaStatement ResolvedNames (), [ResolutionError ()])
 parseAndResolve sql =
@@ -69,70 +71,69 @@ catalog = makeDefaultingCatalog catalogMap [defaultSchema] defaultDatabase
     defaultSchema = mkNormalSchema "public" ()
 
     foo :: (UQTableName (), SchemaMember)
-    foo = ( QTableName () None "foo", persistentTable [ QColumnName () None "_time"
-                                                      ] )
+    foo = (QTableName () None "foo", persistentTable [QColumnName () None "_time"])
 
     catalogMap :: CatalogMap
     catalogMap = HMS.singleton defaultDatabase $
                      HMS.fromList [ ( defaultSchema, HMS.fromList [ foo ] ) ]
 
-data Partition = Partition { partitionColumn :: FQCN, earliestDate :: Day }
+data Partition = Partition { partitionColumn :: FQCN, earliestDate :: NominalDiffTime }
   deriving Show
 
-getQueriedPartitions :: VerticaStatement ResolvedNames () -> [Partition]
-getQueriedPartitions (VerticaStandardSqlStatement s) = getPartitionsFromStatement s
-getQueriedPartitions (VerticaCreateProjectionStatement _) = []
-getQueriedPartitions (VerticaMultipleRenameStatement _) = []
-getQueriedPartitions (VerticaSetSchemaStatement _) = []
-getQueriedPartitions (VerticaMergeStatement _) = []
-getQueriedPartitions (VerticaUnhandledStatement _) = []
+getQueriedPartitions :: UTCTime -> VerticaStatement ResolvedNames () -> [Partition]
+getQueriedPartitions queryTime (VerticaStandardSqlStatement s) = getPartitionsFromStatement queryTime s
+getQueriedPartitions _ (VerticaCreateProjectionStatement _) = []
+getQueriedPartitions _ (VerticaMultipleRenameStatement _) = []
+getQueriedPartitions _ (VerticaSetSchemaStatement _) = []
+getQueriedPartitions _ (VerticaMergeStatement _) = []
+getQueriedPartitions _ (VerticaUnhandledStatement _) = []
 
-getPartitionsFromStatement :: Statement Vertica ResolvedNames () -> [Partition]
-getPartitionsFromStatement (QueryStmt q) = getPartitionsFromQuery q
-getPartitionsFromStatement (InsertStmt _) = []
-getPartitionsFromStatement (UpdateStmt _) = []
-getPartitionsFromStatement (DeleteStmt _) = []
-getPartitionsFromStatement (TruncateStmt _) = []
-getPartitionsFromStatement (CreateTableStmt _) = []
-getPartitionsFromStatement (AlterTableStmt _) = []
-getPartitionsFromStatement (DropTableStmt _) = []
-getPartitionsFromStatement (CreateViewStmt _) = []
-getPartitionsFromStatement (DropViewStmt _) = []
-getPartitionsFromStatement (CreateSchemaStmt _) = []
-getPartitionsFromStatement (GrantStmt _) = []
-getPartitionsFromStatement (RevokeStmt _) = []
-getPartitionsFromStatement (BeginStmt _) = []
-getPartitionsFromStatement (CommitStmt _) = []
-getPartitionsFromStatement (RollbackStmt _) = []
-getPartitionsFromStatement (ExplainStmt _ _) = []
-getPartitionsFromStatement (EmptyStmt _) = []
+getPartitionsFromStatement :: UTCTime -> Statement Vertica ResolvedNames () -> [Partition]
+getPartitionsFromStatement qTime (QueryStmt q) = getPartitionsFromQuery qTime q
+getPartitionsFromStatement _ (InsertStmt _) = []
+getPartitionsFromStatement _ (UpdateStmt _) = []
+getPartitionsFromStatement _ (DeleteStmt _) = []
+getPartitionsFromStatement _ (TruncateStmt _) = []
+getPartitionsFromStatement _ (CreateTableStmt _) = []
+getPartitionsFromStatement _ (AlterTableStmt _) = []
+getPartitionsFromStatement _ (DropTableStmt _) = []
+getPartitionsFromStatement _ (CreateViewStmt _) = []
+getPartitionsFromStatement _ (DropViewStmt _) = []
+getPartitionsFromStatement _ (CreateSchemaStmt _) = []
+getPartitionsFromStatement _ (GrantStmt _) = []
+getPartitionsFromStatement _ (RevokeStmt _) = []
+getPartitionsFromStatement _ (BeginStmt _) = []
+getPartitionsFromStatement _ (CommitStmt _) = []
+getPartitionsFromStatement _ (RollbackStmt _) = []
+getPartitionsFromStatement _ (ExplainStmt _ _) = []
+getPartitionsFromStatement _ (EmptyStmt _) = []
 
-getPartitionsFromQuery :: Query ResolvedNames () -> [Partition]
-getPartitionsFromQuery (QuerySelect _ s) = getPartitionsFromSelect s
-getPartitionsFromQuery (QueryExcept _ _ _ _) = []
-getPartitionsFromQuery (QueryUnion _ isDistinct _ fstQuery sndQuery) =
-  unionPartitions (getPartitionsFromQuery fstQuery) (getPartitionsFromQuery sndQuery)
-getPartitionsFromQuery (QueryIntersect _ _ _ _) = []
-getPartitionsFromQuery (QueryWith _ _ _) = []  -- this is gonna be hard
-getPartitionsFromQuery (QueryOrder _ _ q) = getPartitionsFromQuery q
-getPartitionsFromQuery (QueryLimit _ _ q) = getPartitionsFromQuery q
-getPartitionsFromQuery (QueryOffset _ _ q) = getPartitionsFromQuery q
+getPartitionsFromQuery :: UTCTime -> Query ResolvedNames () -> [Partition]
+getPartitionsFromQuery qTime (QuerySelect _ s) = getPartitionsFromSelect qTime s
+getPartitionsFromQuery _ (QueryExcept _ _ _ _) = []
+getPartitionsFromQuery qTime (QueryUnion _ isDistinct _ fstQuery sndQuery) =
+  unionPartitions (getPartitionsFromQuery qTime fstQuery) (getPartitionsFromQuery qTime sndQuery)
+getPartitionsFromQuery _ (QueryIntersect _ _ _ _) = []
+getPartitionsFromQuery _ (QueryWith _ _ _) = []  -- this is gonna be hard
+getPartitionsFromQuery qTime (QueryOrder _ _ q) = getPartitionsFromQuery qTime q
+getPartitionsFromQuery qTime (QueryLimit _ _ q) = getPartitionsFromQuery qTime q
+getPartitionsFromQuery qTime (QueryOffset _ _ q) = getPartitionsFromQuery qTime q
 
-getPartitionsFromSelect :: Select ResolvedNames () -> [Partition]
-getPartitionsFromSelect select = case selectWhere select of
+getPartitionsFromSelect :: UTCTime -> Select ResolvedNames () -> [Partition]
+getPartitionsFromSelect qTime select = case selectWhere select of
   Nothing -> []
-  Just whereClause -> getPartitionsFromWhere whereClause
+  Just whereClause -> getPartitionsFromWhere qTime whereClause
 
-getPartitionsFromWhere :: SelectWhere ResolvedNames () -> [Partition]
-getPartitionsFromWhere (SelectWhere _ expr) = getPartitionsFromExpr expr
+getPartitionsFromWhere :: UTCTime -> SelectWhere ResolvedNames () -> [Partition]
+getPartitionsFromWhere qTime (SelectWhere _ expr) = getPartitionsFromExpr qTime expr
 
-getPartitionsFromExpr :: Expr ResolvedNames () -> [Partition]
-getPartitionsFromExpr (BinOpExpr _ (Operator ">") left right) =
+getPartitionsFromExpr :: UTCTime -> Expr ResolvedNames () -> [Partition]
+getPartitionsFromExpr qTime (BinOpExpr _ (Operator ">") left right) =
   case [getPartitionExpr left, getPartitionExpr right] of
     [Nothing, Just fqcn] ->
-      [Partition fqcn (evalExpr left)]
+      [Partition fqcn (evalExpr qTime left)]
     [Just fqcn, Nothing] ->
-      [Partition fqcn (evalExpr right)]
+      [Partition fqcn (evalExpr qTime right)]
 
 unionPartitions :: [Partition] -> [Partition] -> [Partition]
 unionPartitions a b = a
@@ -145,6 +146,7 @@ getPartitionExpr expr = case expr of
     foldr (<|>) empty $ fmap getPartitionExpr args
   _ -> Nothing
 
-evalExpr :: Expr ResolvedNames () -> Day
-evalExpr (ConstantExpr _ (StringConstant _ const)) =
-  parseTimeOrError True defaultTimeLocale "%Y-%m-%d" $ TL.unpack $ decodeUtf8 const
+evalExpr :: UTCTime -> Expr ResolvedNames () -> NominalDiffTime
+evalExpr qTime (ConstantExpr _ (StringConstant _ const)) =
+  diffUTCTime qTime $
+    parseTimeOrError True defaultTimeLocale "%Y-%m-%d" $ TL.unpack $ decodeUtf8 const
