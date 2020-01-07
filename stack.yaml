@@ -26,8 +26,8 @@ packages:
 - .
 
 extra-deps:
-  - git: https://github.com/uber/queryparser.git
-    commit: 6015e8f273f4498326fec0315ac5580d7036f8a4
+  - git: https://github.com/asnr/queryparser.git
+    commit: 852f82c9dae0eae8aa9b0521d334161589a624b7
     subdirs: ['.', 'dialects/vertica']
   - fixed-list-0.1.6@sha256:0f42848c75f9d5cfaa1418d6e492c611d351e735828edc137eb09129403c9804,932
   - yaml-0.8.32@sha256:cb9e788e4c18f3c3579a950c1d53f89efb7e8871f6a00b5fabc37084c05cf04e,5452

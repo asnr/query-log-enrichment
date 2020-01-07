@@ -11,15 +11,15 @@ packages:
       sha256: eec2e92cb10bd71764f3f0f8077c4f6a9adc29e11c4a14b922189c3f829b5f4d
     name: queryparser
     version: 0.1.0.1
-    git: https://github.com/uber/queryparser.git
+    git: https://github.com/asnr/queryparser.git
     pantry-tree:
       size: 11169
-      sha256: 9d67c27edc5120c4cf1ce468406a4a7c3d6bc67b919be2ecb07a3c380ecf4db0
-    commit: 6015e8f273f4498326fec0315ac5580d7036f8a4
+      sha256: bf8b5921eb30e955bfb1cb21c2d6b10c7deda75cad3f46a9b14591d616c49e49
+    commit: 852f82c9dae0eae8aa9b0521d334161589a624b7
   original:
     subdir: .
-    git: https://github.com/uber/queryparser.git
-    commit: 6015e8f273f4498326fec0315ac5580d7036f8a4
+    git: https://github.com/asnr/queryparser.git
+    commit: 852f82c9dae0eae8aa9b0521d334161589a624b7
 - completed:
     subdir: dialects/vertica
     cabal-file:
@@ -27,15 +27,15 @@ packages:
       sha256: e21b1c8d81998e2b99bdf5ddc61451509629b0829a3e8dd47b753fea51e35b6d
     name: queryparser-vertica
     version: 0.1.0.1
-    git: https://github.com/uber/queryparser.git
+    git: https://github.com/asnr/queryparser.git
     pantry-tree:
       size: 809
-      sha256: ffe7178a5789e4f8d0217f244f9924e6adfa6231ca2c0e4bb4883d30447c942a
-    commit: 6015e8f273f4498326fec0315ac5580d7036f8a4
+      sha256: 1de34c2b2d943542cbb821212afcd8219ad5fdaa823ae136e5014c6ccb6870f3
+    commit: 852f82c9dae0eae8aa9b0521d334161589a624b7
   original:
     subdir: dialects/vertica
-    git: https://github.com/uber/queryparser.git
-    commit: 6015e8f273f4498326fec0315ac5580d7036f8a4
+    git: https://github.com/asnr/queryparser.git
+    commit: 852f82c9dae0eae8aa9b0521d334161589a624b7
 - completed:
     hackage: fixed-list-0.1.6@sha256:0f42848c75f9d5cfaa1418d6e492c611d351e735828edc137eb09129403c9804,932
     pantry-tree:

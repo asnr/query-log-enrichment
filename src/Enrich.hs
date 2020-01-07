@@ -27,6 +27,7 @@ import Database.Sql.Type.Names ( DatabaseName (..)
                                , QTableName (..), UQTableName
                                , RColumnRef (..)
                                , FQCN
+                               , QFunctionName(..)
                                , QColumnName(..))
 import Database.Sql.Type.Schema (makeDefaultingCatalog)
 import Database.Sql.Type.Scope (Catalog
@@ -150,3 +151,6 @@ evalExpr :: UTCTime -> Expr ResolvedNames () -> NominalDiffTime
 evalExpr qTime (ConstantExpr _ (StringConstant _ const)) =
   diffUTCTime qTime $
     parseTimeOrError True defaultTimeLocale "%Y-%m-%d" $ TL.unpack $ decodeUtf8 const
+evalExpr qTime (FunctionExpr _ funcName _ _ _ _ _) =
+  case funcName of
+    (QFunctionName _ _ "current_timestamp") -> 0  -- qTime == current_timestamp()
