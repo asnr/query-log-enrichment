@@ -25,6 +25,7 @@ dependencies:
 - queryparser-vertica
 - text
 - time
+- tz
 - unordered-containers
 
 library:
